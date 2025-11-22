@@ -1,13 +1,7 @@
+// api/chat.js
 import Groq from "groq-sdk";
 
 export default async function handler(req, res) {
-  const allowedOrigin = "https://hooded-vulture-frontend.vercel.app";
-
-  // Allow CORS
-  res.setHeader("Access-Control-Allow-Origin", allowedOrigin);
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
@@ -18,6 +12,10 @@ export default async function handler(req, res) {
 
   const { text, personality, sessionId } = req.body;
 
+  if (!text) {
+    return res.status(400).json({ error: "No text provided" });
+  }
+
   const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
   try {
@@ -25,13 +23,13 @@ export default async function handler(req, res) {
       model: "llama-3.1-8b-instant",
       messages: [
         { role: "system", content: "You are the Hooded Vulture assistant." },
-        { role: "user", content: text }
-      ]
+        { role: "user", content: text },
+      ],
     });
 
     res.status(200).json({ reply: response.choices[0].message.content });
-
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: "Backend failed to respond" });
   }
 }

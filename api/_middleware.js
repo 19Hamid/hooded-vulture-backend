@@ -1,21 +1,18 @@
+// api/_middleware.js
 export const config = { runtime: "edge" };
 
-export default async function middleware(req) {
-  // Allow requests from your frontend domain
-  const allowedOrigin = "https://hooded-vulture-frontend.vercel.app";
+export default function middleware(req) {
+  const response = new Response(null, {
+    headers: {
+      // Replace with your actual deployed frontend
+      "Access-Control-Allow-Origin": "https://beakspeak-chatbot.vercel.app",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  });
 
-  const headers = {
-    "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-  };
+  // Respond immediately to OPTIONS preflight requests
+  if (req.method === "OPTIONS") return response;
 
-  // Handle OPTIONS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers });
-  }
-
-  // Continue to the actual endpoint
-  const response = await fetch(req.url, { headers });
   return response;
 }
