@@ -1,14 +1,21 @@
 export const config = { runtime: "edge" };
 
-export default function middleware(req) {
-  const response = new Response(null, {
-    headers: {
-      "Access-Control-Allow-Origin": "https://hooded-vulture-frontend-hrepg43o5-hamids-projects-6c07675c.vercel.app",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-    },
-  });
+export default async function middleware(req) {
+  // Allow requests from your frontend domain
+  const allowedOrigin = "https://hooded-vulture-frontend.vercel.app";
 
-  if (req.method === "OPTIONS") return response;
+  const headers = {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+
+  // Handle OPTIONS preflight requests
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers });
+  }
+
+  // Continue to the actual endpoint
+  const response = await fetch(req.url, { headers });
   return response;
 }
