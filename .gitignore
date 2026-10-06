@@ -1,3 +1,7 @@
-.vercel
-".env" 
-".env" 
+node_modules/
+.env
+.env.*
+!.env.example
+.vercel/
+coverage/
+*.log

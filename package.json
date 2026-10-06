@@ -2,7 +2,14 @@
   "name": "hooded-vulture-backend",
   "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "start": "node scripts/dev-server.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "dependencies": {
-    "groq-sdk": "^0.5.0"
+    "groq-sdk": "1.6.0"
   }
 }
