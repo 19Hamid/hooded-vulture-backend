@@ -47,7 +47,8 @@ export function validateBody(rawBody) {
 export function classifyProviderError(error) {
   const status = error?.status;
   if (error?.name === "APIConnectionTimeoutError" || error?.name === "AbortError") return { status: 504, code: "PROVIDER_TIMEOUT", message: "BeakSpeak took too long to respond. Please try again." };
-  if (status === 401 || status === 403) return { status: 503, code: "PROVIDER_AUTH_ERROR", message: "Chat is temporarily unavailable. The service configuration needs attention." };
+  if (status === 401) return { status: 503, code: "PROVIDER_KEY_REJECTED", message: "Chat is temporarily unavailable. The service configuration needs attention." };
+  if (status === 403) return { status: 503, code: "PROVIDER_ACCESS_DENIED", message: "Chat is temporarily unavailable. The service configuration needs attention." };
   if (status === 429) return { status: 429, code: "PROVIDER_RATE_LIMIT", message: "BeakSpeak is busy. Please wait a minute before trying again." };
   if (status === 400 || status === 404 || status === 422) return { status: 503, code: "PROVIDER_CONFIG_ERROR", message: "Chat is temporarily unavailable. The service configuration needs attention." };
   return { status: 502, code: "PROVIDER_UNAVAILABLE", message: "BeakSpeak could not reach its AI service. Please try again shortly." };

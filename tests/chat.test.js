@@ -78,7 +78,7 @@ test('missing configuration is handled without constructing the SDK or exposing 
 });
 
 test('classifies provider failures and logs safe diagnostic metadata only', async () => {
-  for (const [providerStatus, expectedStatus, code] of [[401, 503, 'PROVIDER_AUTH_ERROR'], [403, 503, 'PROVIDER_AUTH_ERROR'], [400, 503, 'PROVIDER_CONFIG_ERROR'], [404, 503, 'PROVIDER_CONFIG_ERROR'], [429, 429, 'PROVIDER_RATE_LIMIT'], [500, 502, 'PROVIDER_UNAVAILABLE']]) {
+  for (const [providerStatus, expectedStatus, code] of [[401, 503, 'PROVIDER_KEY_REJECTED'], [403, 503, 'PROVIDER_ACCESS_DENIED'], [400, 503, 'PROVIDER_CONFIG_ERROR'], [404, 503, 'PROVIDER_CONFIG_ERROR'], [429, 429, 'PROVIDER_RATE_LIMIT'], [500, 502, 'PROVIDER_UNAVAILABLE']]) {
     const err = Object.assign(new Error('secret-key / private-user-prompt'), { status: providerStatus, error: { code: 'model_not_found', message: 'private-user-prompt' } });
     const { handler, logs } = fixture({ createClient: () => ({ chat: { completions: { create: async () => { throw err; } } } }) });
     const res = response();

@@ -29,7 +29,8 @@ For a public deployment, also configure Vercel Firewall to rate-limit POST `/api
 In the backend project's Vercel **Logs**, filter request path `/api/chat` and the relevant error status. Match the browser's reference to the JSON log's `requestId`. Logs include safe error category, configured model, provider HTTP status, and provider error code when available. They exclude user messages, API keys, raw SDK errors, and payloads.
 
 - `SERVICE_NOT_CONFIGURED` / `MISSING_API_KEY`: configure `GROQ_API_KEY` for this environment and redeploy.
-- `PROVIDER_AUTH_ERROR`: check the key and Groq project/account permissions in the provider console.
+- `PROVIDER_KEY_REJECTED`: Groq returned 401; replace the rejected key in the server environment and redeploy.
+- `PROVIDER_ACCESS_DENIED`: Groq returned 403; check Groq project/account and model permissions.
 - `PROVIDER_CONFIG_ERROR`: check `GROQ_MODEL`, model access, and the safe provider code in the log.
 - `PROVIDER_RATE_LIMIT`: wait for the Groq rate window and review quotas/spend limits.
 - `PROVIDER_TIMEOUT` or `PROVIDER_UNAVAILABLE`: review provider availability and retry a small request.
