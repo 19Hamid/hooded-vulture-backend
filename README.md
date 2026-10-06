@@ -1,41 +1,101 @@
-# BeakSpeak Node backend
+# BeakSpeak API
 
-This repository is the production Vercel backend for BeakSpeak. The frontend must POST to **`/api/chat`**, not the project root. The obsolete `_middleware.js` and tracked dependency directory have been removed.
+The Node.js backend for [BeakSpeak](https://beakspeak-chatbot.vercel.app/), an educational chatbot about hooded vultures.
 
-## Setup
+The API validates chat requests, adds the selected assistant personality and calls a hosted language model through Groq. It runs as a Vercel Function.
 
-Use Node 22+. Run `npm ci`. Set the server-only `GROQ_API_KEY` in Vercel for each deployment environment. The key never belongs in the frontend. `GROQ_MODEL` is optional and defaults to `openai/gpt-oss-20b`; the old Llama model is now listed as enterprise-only by Groq. Keep the model override if the account has access to another supported model.
+**[Frontend repository](https://github.com/19Hamid/hooded-vulture-frontend)** · **[API reference](docs/API.md)** · **[Deployment guide](docs/DEPLOYMENT.md)**
 
-For local development, copy `.env.example` to `.env` and run `node --env-file=.env scripts/dev-server.js`. The endpoint runs on port 3001. `npm start` uses environment variables already supplied by the shell. Run `npm test` for regressions.
+## Run locally
 
-## Contract
+Requirements: **Node.js 22 or later**, npm and a Groq API key for chat.
 
-Send JSON `{ "text": "Hello", "personality": "normal", "sessionId": "optional-unique-id", "history": [] }`.
+```bash
+git clone https://github.com/19Hamid/hooded-vulture-backend.git
+cd hooded-vulture-backend
+npm ci
+cp .env.example .env
+```
 
-Text must be a nonblank string with at most 2,000 characters. Personalities are normal, happy, or angry. History is optional: up to six complete user/assistant turns (12 messages, 12,000 total characters; each message at most 4,000). System roles from the client are rejected. The total request body is capped at 64 KiB. Session IDs are optional metadata; conversations are provided by the client and are not stored or shared on the server.
+Set `GROQ_API_KEY` in `.env`, then start the server:
 
-Success returns `{ "reply": "…", "requestId": "…" }`. Failures return an appropriate HTTP status and `{ "error": "safe message", "code": "…", "requestId": "…" }`. The same reference appears in `X-Request-Id`. Replies are capped at 1,024 completion tokens. Provider calls use a 20-second timeout and no automatic retries; the Vercel function has a 30-second limit.
+```bash
+node --env-file=.env scripts/dev-server.js
+```
 
-CORS allows the production frontend and its preview URLs on Hamid's existing Vercel team. Add other exact origins to comma-separated `ALLOWED_ORIGINS`. Localhost is automatically allowed outside production. CORS is browser access control, not authentication.
+The endpoint is **http://localhost:3001/api/chat**.
 
-## Rate limits and budget
+On PowerShell, use `Copy-Item .env.example .env` instead of `cp`. If the shell or hosting service already supplies the environment, `npm start` starts the same local server.
 
-Code enforces 10 messages per IP per minute, 120 globally per minute, and 1,000 globally per 24-hour window. Configure **both** `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to make these counters atomic and shared across Vercel instances. A configured Redis outage fails closed and prevents a provider call. Without Redis, bounded in-memory counters only protect each warm instance; they are **not a deployment-wide quota**. Provisioning a Redis store is a separate account setup step; the code does not create or charge for one.
+## Example request
 
-For a public deployment, also configure Vercel Firewall to rate-limit POST `/api/chat` by IP and set a Groq spend limit. Do not treat local counters or CORS as complete abuse protection. Redis keys hash IP addresses and expire automatically; no prompts or credentials are stored in them.
+```bash
+curl -i http://localhost:3001/api/chat \
+  -H 'Content-Type: application/json' \
+  --data '{"text":"Why are hooded vultures important?","personality":"normal","history":[]}'
+```
 
-## Diagnose production errors
+Success returns `reply` and `requestId`. See the [API reference](docs/API.md) for the full contract and errors.
 
-In the backend project's Vercel **Logs**, filter request path `/api/chat` and the relevant error status. Match the browser's reference to the JSON log's `requestId`. Logs include safe error category, configured model, provider HTTP status, and provider error code when available. They exclude user messages, API keys, raw SDK errors, and payloads.
+## Configuration
 
-- `SERVICE_NOT_CONFIGURED` / `MISSING_API_KEY`: configure `GROQ_API_KEY` for this environment and redeploy.
-- `PROVIDER_KEY_REJECTED`: Groq returned 401; replace the rejected key in the server environment and redeploy.
-- `PROVIDER_ACCESS_DENIED`: Groq returned 403; check Groq project/account and model permissions.
-- `PROVIDER_CONFIG_ERROR`: check `GROQ_MODEL`, model access, and the safe provider code in the log.
-- `PROVIDER_RATE_LIMIT`: wait for the Groq rate window and review quotas/spend limits.
-- `PROVIDER_TIMEOUT` or `PROVIDER_UNAVAILABLE`: review provider availability and retry a small request.
-- `RATE_LIMIT_UNAVAILABLE`: check the Redis URL/token and service availability.
+| Variable | Purpose |
+| --- | --- |
+| `GROQ_API_KEY` | Server-only provider key; required for chat |
+| `GROQ_MODEL` | Model identifier; defaults to `openai/gpt-oss-20b` |
+| `ALLOWED_ORIGINS` | Additional exact browser origins, separated by commas |
+| `UPSTASH_REDIS_REST_URL` | Optional HTTPS endpoint for shared usage counters |
+| `UPSTASH_REDIS_REST_TOKEN` | Token for that Redis endpoint; configure both Redis values together |
 
-The old production HTTP 500 has not been attributed to a specific provider error because runtime-log access was denied. This repair improves diagnostics and fixes known contract and dependency problems; validate a real reply on the preview before merging the backend, then merge the frontend.
+Store provider and Redis credentials as hosting-platform secrets. Keep local values in the ignored `.env` and commit only the empty `.env.example`.
 
-Official references: [Groq models](https://console.groq.com/docs/models), [Groq errors](https://console.groq.com/docs/errors), [Vercel runtime logs](https://vercel.com/docs/logs/runtime), [Vercel rate limiting](https://vercel.com/docs/vercel-firewall/vercel-waf/rate-limiting).
+Model availability and quotas depend on the Groq account. See [Groq's model documentation](https://console.groq.com/docs/models).
+
+## Request handling
+
+- JSON bodies are limited to 64 KiB and messages to 1–2,000 characters.
+- History accepts six complete user/assistant turns and 12,000 characters.
+- Client-provided system messages are rejected.
+- Completions are capped at 1,024 tokens and replies at 4,000 characters.
+- Provider calls time out after 20 seconds with no automatic retries.
+- The Vercel Function has a 30-second maximum duration.
+- Errors return safe messages and request references.
+
+The backend does not persist chat transcripts. The client supplies recent history with each request. Error logs contain diagnostic metadata rather than message text, credentials or raw provider errors.
+
+## Usage limits
+
+The code supports these fixed-window limits:
+
+| Scope | Limit |
+| --- | --- |
+| Per IP | 10 requests per minute |
+| Global | 120 requests per minute |
+| Global | 1,000 requests per 24-hour window |
+
+With both Redis variables configured, counters are atomic and shared across instances. A configured Redis failure returns `503` before calling Groq.
+
+Without Redis, counters live in each warm process. They reset when that process is replaced and do not enforce a deployment-wide quota. This repository does not provision Redis.
+
+CORS controls browser origins and does not authenticate API clients. Configure provider spending controls and appropriate platform rate limits for a public deployment.
+
+## Tests
+
+```bash
+npm test
+```
+
+Tests mock Groq and need no live key. They cover validation, context, personalities, CORS, provider failures, timeouts and rate limiting.
+
+## Project structure
+
+| Path | Contents |
+| --- | --- |
+| `api/chat.js` | Handler, validation, provider call and errors |
+| `lib/rate-limit.js` | In-memory and shared Redis counters |
+| `scripts/dev-server.js` | Local HTTP server |
+| `tests/chat.test.js` | API regression tests |
+| `.env.example` | Configuration template with empty secrets |
+| `vercel.json` | Function duration |
+
+Created by [Hamid](https://github.com/19Hamid).
